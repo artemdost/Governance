@@ -8,15 +8,14 @@ import "./Market.sol";
 /// @notice Implements a decentralized autonomous organization (DAO) with proposal and voting mechanisms.
 /// @dev Inherits from the Market contract.
 contract DAO is Market {
-    
     /**
      * @notice Stores information about votes on a proposal.
      * @dev Tracks votes against, for, and abstain, along with a record of who has voted.
      */
     struct ProposalVote {
-        uint againstVotes;
-        uint forVotes;
-        uint abstainVotes;
+        uint256 againstVotes;
+        uint256 forVotes;
+        uint256 abstainVotes;
         mapping(address => bool) hasVoted;
     }
 
@@ -25,15 +24,22 @@ contract DAO is Market {
      * @dev Tracks the start and end times of voting and whether the proposal has been executed.
      */
     struct Proposal {
-        uint votingStarts;
-        uint votingEnds;
+        uint256 votingStarts;
+        uint256 votingEnds;
         bool executed;
     }
 
     /**
      * @notice Represents the different states a proposal can be in.
      */
-    enum ProposalState {Pending, Active, Succeeded, Defeated, Executed, Expired}
+    enum ProposalState {
+        Pending,
+        Active,
+        Succeeded,
+        Defeated,
+        Executed,
+        Expired
+    }
 
     /**
      * @notice Maps a proposal ID to its corresponding Proposal struct.
@@ -44,22 +50,22 @@ contract DAO is Market {
      * @notice Maps a proposal ID to its corresponding ProposalVote struct.
      */
     mapping(bytes32 => ProposalVote) public proposalVotes;
-    
+
     /**
      * @notice The duration of the voting period, set to 14 days.
      */
-    uint public constant VOTING_DURATION = 14 * 24 * 60 * 60; 
+    uint256 public constant VOTING_DURATION = 14 * 24 * 60 * 60;
 
     /**
      * @notice The time limit for executing a proposal after it has succeeded, set to 7 days.
      */
-    uint public constant TIME_TO_EXECUTE = 7 * 24 * 60 * 60;
+    uint256 public constant TIME_TO_EXECUTE = 7 * 24 * 60 * 60;
 
     /**
      * @notice Sets the initial owner of the contract.
      * @param _addr The address to be set as the owner.
      */
-    constructor(address _addr){
+    constructor(address _addr) {
         owner = _addr;
     }
 
@@ -74,26 +80,23 @@ contract DAO is Market {
      */
     function propose(
         address _to,
-        uint _value,
+        uint256 _value,
         string calldata _func,
         bytes calldata _data,
         string calldata _description
     ) external {
-        if (keccak256(abi.encodePacked(_func)) == keccak256(abi.encodePacked("unpause()"))) revert("Can not be called there");
+        if (keccak256(abi.encodePacked(_func)) == keccak256(abi.encodePacked("unpause()"))) {
+            revert("Can not be called there");
+        }
 
-        bytes32 proposalId = generateProposalId(
-            _to, _value, _func, _data, keccak256(bytes(_description))
-        );
+        bytes32 proposalId = generateProposalId(_to, _value, _func, _data, keccak256(bytes(_description)));
 
         require(proposals[proposalId].votingStarts == 0, "proposal already exists");
 
-        proposals[proposalId] = Proposal({
-            votingStarts: block.timestamp,
-            votingEnds: block.timestamp + VOTING_DURATION,
-            executed: false
-        });
+        proposals[proposalId] =
+            Proposal({votingStarts: block.timestamp, votingEnds: block.timestamp + VOTING_DURATION, executed: false});
     }
-    
+
     /**
      * @notice Executes a proposal that has passed the voting process.
      * @dev The proposal must be in the 'Succeeded' state, and the execution time must not have expired.
@@ -104,16 +107,11 @@ contract DAO is Market {
      * @param _descriptionHash The hash of the proposal's description.
      * @return bytes The response from the executed call.
      */
-    function execute(
-        address _to,
-        uint _value,
-        string calldata _func,
-        bytes calldata _data,
-        bytes32 _descriptionHash
-    ) external returns(bytes memory) {
-        bytes32 proposalId = generateProposalId(
-            _to, _value, _func, _data, _descriptionHash
-        );
+    function execute(address _to, uint256 _value, string calldata _func, bytes calldata _data, bytes32 _descriptionHash)
+        external
+        returns (bytes memory)
+    {
+        bytes32 proposalId = generateProposalId(_to, _value, _func, _data, _descriptionHash);
 
         require(state(proposalId) == ProposalState.Succeeded, "invalid state");
 
@@ -125,9 +123,7 @@ contract DAO is Market {
 
         bytes memory data;
         if (bytes(_func).length > 0) {
-            data = abi.encodePacked(
-                bytes4(keccak256(bytes(_func))), _data
-            );
+            data = abi.encodePacked(bytes4(keccak256(bytes(_func))), _data);
         } else {
             data = _data;
         }
@@ -145,7 +141,7 @@ contract DAO is Market {
      */
     function unpause(address _to) public {
         require(govr.balanceOf(msg.sender) > 0, "You are not part of the governament");
-        (bool success, ) = _to.call(abi.encodeWithSignature("unpause()"));
+        (bool success,) = _to.call(abi.encodeWithSignature("unpause()"));
         require(success);
     }
 
@@ -156,7 +152,7 @@ contract DAO is Market {
      * @param voteType The type of vote (0 = Against, 1 = For, 2 = Abstain).
      */
     function vote(bytes32 proposalId, uint8 voteType) external {
-        uint votingPower = govr.balanceOf(msg.sender);
+        uint256 votingPower = govr.balanceOf(msg.sender);
         require(state(proposalId) == ProposalState.Active, "invalid state");
         require(votingPower > 0, "not enough tokens");
         if (votingPower > 5000) votingPower = 5000;
@@ -195,8 +191,7 @@ contract DAO is Market {
             return ProposalState.Pending;
         }
 
-        if (block.timestamp >= proposal.votingStarts &&
-            proposal.votingEnds > block.timestamp) {
+        if (block.timestamp >= proposal.votingStarts && proposal.votingEnds > block.timestamp) {
             return ProposalState.Active;
         }
 
@@ -218,11 +213,11 @@ contract DAO is Market {
      */
     function generateProposalId(
         address _to,
-        uint _value,
+        uint256 _value,
         string calldata _func,
         bytes calldata _data,
         bytes32 _descriptionHach
-    ) public pure returns(bytes32) {
+    ) public pure returns (bytes32) {
         return keccak256(abi.encode(_to, _value, _func, _data, _descriptionHach));
     }
 }

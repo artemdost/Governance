@@ -18,7 +18,6 @@ contract CounterTest is Test {
     address person2 = vm.addr(4);
     address person3 = vm.addr(5);
 
-
     function setUp() public {
         usdt = new USDT(deployer);
         dao = new DAO(owner);
@@ -56,7 +55,6 @@ contract CounterTest is Test {
         assertEq(govr.balanceOf(person1), 1000);
         assertEq(usdt.balanceOf(address(dao)), 1000);
         assertEq(govr.balanceOf(address(dao)), 99 * 1000);
-
     }
 
     function testMintOneVotingPersonFor() public {
@@ -70,38 +68,21 @@ contract CounterTest is Test {
         assertEq(usdt.balanceOf(address(dao)), 1000);
         assertEq(govr.balanceOf(address(dao)), 99 * 1000);
 
-        dao.propose(
-            address(nft), 
-            0,
-            "safeMint(address)",
-            abi.encode(person1),
-             "First mint"
-        );
+        dao.propose(address(nft), 0, "safeMint(address)", abi.encode(person1), "First mint");
 
         bytes32 propId = dao.generateProposalId(
-            address(nft), 
-            0,
-            "safeMint(address)",
-            abi.encode(person1),
-            keccak256(bytes("First mint"))
+            address(nft), 0, "safeMint(address)", abi.encode(person1), keccak256(bytes("First mint"))
         );
 
         dao.vote(propId, 1);
 
         vm.warp(block.timestamp + 15 days);
 
-        dao.execute(
-            address(nft), 
-            0,
-            "safeMint(address)",
-            abi.encode(person1),
-            keccak256(bytes("First mint"))
-        );
+        dao.execute(address(nft), 0, "safeMint(address)", abi.encode(person1), keccak256(bytes("First mint")));
 
         vm.stopPrank();
 
         assertEq(nft.balanceOf(person1), 1);
-
     }
 
     function testMintTwoVotingPersonFor() public {
@@ -115,20 +96,10 @@ contract CounterTest is Test {
         assertEq(usdt.balanceOf(address(dao)), 1000);
         assertEq(govr.balanceOf(address(dao)), 99 * 1000);
 
-        dao.propose(
-            address(nft), 
-            0,
-            "safeMint(address)",
-            abi.encode(person1),
-             "First mint"
-        );
+        dao.propose(address(nft), 0, "safeMint(address)", abi.encode(person1), "First mint");
 
         bytes32 propId = dao.generateProposalId(
-            address(nft), 
-            0,
-            "safeMint(address)",
-            abi.encode(person1),
-            keccak256(bytes("First mint"))
+            address(nft), 0, "safeMint(address)", abi.encode(person1), keccak256(bytes("First mint"))
         );
 
         dao.vote(propId, 1);
@@ -149,13 +120,7 @@ contract CounterTest is Test {
 
         vm.warp(block.timestamp + 15 days);
 
-        dao.execute(
-            address(nft), 
-            0,
-            "safeMint(address)",
-            abi.encode(person1),
-            keccak256(bytes("First mint"))
-        );
+        dao.execute(address(nft), 0, "safeMint(address)", abi.encode(person1), keccak256(bytes("First mint")));
 
         vm.stopPrank();
 
@@ -173,20 +138,10 @@ contract CounterTest is Test {
         assertEq(usdt.balanceOf(address(dao)), 1000);
         assertEq(govr.balanceOf(address(dao)), 99 * 1000);
 
-        dao.propose(
-            address(nft), 
-            0,
-            "safeMint(address)",
-            abi.encode(person1),
-             "First mint"
-        );
+        dao.propose(address(nft), 0, "safeMint(address)", abi.encode(person1), "First mint");
 
         bytes32 propId = dao.generateProposalId(
-            address(nft), 
-            0,
-            "safeMint(address)",
-            abi.encode(person1),
-            keccak256(bytes("First mint"))
+            address(nft), 0, "safeMint(address)", abi.encode(person1), keccak256(bytes("First mint"))
         );
 
         dao.vote(propId, 1);
@@ -209,13 +164,7 @@ contract CounterTest is Test {
 
         vm.expectRevert("invalid state");
 
-        dao.execute(
-            address(nft), 
-            0,
-            "safeMint(address)",
-            abi.encode(person1),
-            keccak256(bytes("First mint"))
-        );
+        dao.execute(address(nft), 0, "safeMint(address)", abi.encode(person1), keccak256(bytes("First mint")));
     }
 
     function testPauseTwoVotingPersonFor() public {
@@ -229,21 +178,10 @@ contract CounterTest is Test {
         assertEq(usdt.balanceOf(address(dao)), 1000);
         assertEq(govr.balanceOf(address(dao)), 99 * 1000);
 
-        dao.propose(
-            address(nft), 
-            0,
-            "pause()",
-            abi.encode(),
-             "First pause"
-        );
+        dao.propose(address(nft), 0, "pause()", abi.encode(), "First pause");
 
-        bytes32 propId = dao.generateProposalId(
-            address(nft), 
-            0,
-            "pause()",
-            abi.encode(),
-            keccak256(bytes("First pause"))
-        );
+        bytes32 propId =
+            dao.generateProposalId(address(nft), 0, "pause()", abi.encode(), keccak256(bytes("First pause")));
 
         dao.vote(propId, 1);
 
@@ -263,13 +201,7 @@ contract CounterTest is Test {
 
         vm.warp(block.timestamp + 15 days);
 
-        dao.execute(
-            address(nft), 
-            0,
-            "pause()",
-            abi.encode(),
-            keccak256(bytes("First pause"))
-        );
+        dao.execute(address(nft), 0, "pause()", abi.encode(), keccak256(bytes("First pause")));
 
         vm.stopPrank();
 
@@ -277,7 +209,7 @@ contract CounterTest is Test {
         vm.prank(address(dao));
         nft.safeMint(address(dao));
     }
-    
+
     function testPauseUnpauseTwoVotingPersonFor() public {
         vm.startPrank(person1);
         usdt.approve(address(dao), 1000);
@@ -289,21 +221,10 @@ contract CounterTest is Test {
         assertEq(usdt.balanceOf(address(dao)), 1000);
         assertEq(govr.balanceOf(address(dao)), 99 * 1000);
 
-        dao.propose(
-            address(nft), 
-            0,
-            "pause()",
-            abi.encode(),
-             "First pause"
-        );
+        dao.propose(address(nft), 0, "pause()", abi.encode(), "First pause");
 
-        bytes32 propId = dao.generateProposalId(
-            address(nft), 
-            0,
-            "pause()",
-            abi.encode(),
-            keccak256(bytes("First pause"))
-        );
+        bytes32 propId =
+            dao.generateProposalId(address(nft), 0, "pause()", abi.encode(), keccak256(bytes("First pause")));
 
         dao.vote(propId, 1);
 
@@ -323,13 +244,7 @@ contract CounterTest is Test {
 
         vm.warp(block.timestamp + 15 days);
 
-        dao.execute(
-            address(nft), 
-            0,
-            "pause()",
-            abi.encode(),
-            keccak256(bytes("First pause"))
-        );
+        dao.execute(address(nft), 0, "pause()", abi.encode(), keccak256(bytes("First pause")));
 
         dao.unpause(address(nft));
 

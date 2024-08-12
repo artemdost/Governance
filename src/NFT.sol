@@ -9,10 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract NFT is ERC721, ERC721Pausable, Ownable {
     uint256 private _nextTokenId;
 
-    constructor(address initialOwner)
-        ERC721("NFT", "NFT")
-        Ownable(initialOwner)
-    {}
+    constructor(address initialOwner) ERC721("NFT", "NFT") Ownable(initialOwner) {}
 
     function pause() public onlyOwner {
         _pause();
