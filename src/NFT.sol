@@ -7,8 +7,10 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract NFT is ERC721, ERC721Pausable, Ownable {
+    uint256 private _nextTokenId;
+
     constructor(address initialOwner)
-        ERC721("MyNFT", "NFT")
+        ERC721("NFT", "NFT")
         Ownable(initialOwner)
     {}
 
@@ -20,7 +22,8 @@ contract NFT is ERC721, ERC721Pausable, Ownable {
         _unpause();
     }
 
-    function safeMint(address to, uint256 tokenId) public onlyOwner {
+    function safeMint(address to) public onlyOwner {
+        uint256 tokenId = _nextTokenId++;
         _safeMint(to, tokenId);
     }
 

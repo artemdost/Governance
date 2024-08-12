@@ -27,8 +27,7 @@ contract DAO is Market{
     mapping(bytes32 => Proposal) public proposals;
     mapping(bytes32 => ProposalVote) public proposalVotes;
 
-    uint public constant VOTING_DELAY = 10;
-    // 7 ДНЕЙ
+    // 14 ДНЕЙ
     uint public constant VOTING_DURATION = 14 * 24 * 60 * 60; 
     uint public constant TIME_TO_EXECUTE = 7 * 24 * 60 * 60;
 
@@ -76,7 +75,7 @@ contract DAO is Market{
 
         Proposal storage proposal = proposals[proposalId];
 
-        require(proposal.votingEnds + TIME_TO_EXECUTE < block.timestamp, "the time for execution has expired");
+        require(proposal.votingEnds + TIME_TO_EXECUTE > block.timestamp, "the time for execution has expired");
 
         proposal.executed = true;
 
@@ -152,7 +151,7 @@ contract DAO is Market{
         string calldata _func,
         bytes calldata _data,
         bytes32 _descriptionHach
-    ) internal pure returns(bytes32) {
+    ) public pure returns(bytes32) {
         return keccak256(abi.encode(_to, _value, _func, _data, _descriptionHach));
     }
 }
