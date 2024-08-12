@@ -277,4 +277,66 @@ contract CounterTest is Test {
         vm.prank(address(dao));
         nft.safeMint(address(dao));
     }
+    
+    function testPauseUnpauseTwoVotingPersonFor() public {
+        vm.startPrank(person1);
+        usdt.approve(address(dao), 1000);
+
+        dao.buyGOVR(1000);
+
+        assertEq(usdt.balanceOf(person1), 9 * 1000);
+        assertEq(govr.balanceOf(person1), 1000);
+        assertEq(usdt.balanceOf(address(dao)), 1000);
+        assertEq(govr.balanceOf(address(dao)), 99 * 1000);
+
+        dao.propose(
+            address(nft), 
+            0,
+            "pause()",
+            abi.encode(),
+             "First pause"
+        );
+
+        bytes32 propId = dao.generateProposalId(
+            address(nft), 
+            0,
+            "pause()",
+            abi.encode(),
+            keccak256(bytes("First pause"))
+        );
+
+        dao.vote(propId, 1);
+
+        vm.stopPrank();
+
+        vm.startPrank(person2);
+        usdt.approve(address(dao), 1000);
+
+        dao.buyGOVR(1000);
+
+        assertEq(usdt.balanceOf(person1), 9 * 1000);
+        assertEq(govr.balanceOf(person1), 1000);
+        assertEq(usdt.balanceOf(address(dao)), 2000);
+        assertEq(govr.balanceOf(address(dao)), 98 * 1000);
+
+        dao.vote(propId, 1);
+
+        vm.warp(block.timestamp + 15 days);
+
+        dao.execute(
+            address(nft), 
+            0,
+            "pause()",
+            abi.encode(),
+            keccak256(bytes("First pause"))
+        );
+
+        dao.unpause(address(nft));
+
+        vm.stopPrank();
+
+        vm.startPrank(address(dao));
+        nft.safeMint(person1);
+        vm.stopPrank();
+    }
 }

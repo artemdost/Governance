@@ -4,39 +4,74 @@ pragma solidity ^0.8.20;
 
 import "./Market.sol";
 
-contract DAO is Market{
+/// @title DAO Contract
+/// @notice Implements a decentralized autonomous organization (DAO) with proposal and voting mechanisms.
+/// @dev Inherits from the Market contract.
+contract DAO is Market {
     
-    // информация о голосах в голосовалке
-    struct ProposalVote{
+    /**
+     * @notice Stores information about votes on a proposal.
+     * @dev Tracks votes against, for, and abstain, along with a record of who has voted.
+     */
+    struct ProposalVote {
         uint againstVotes;
         uint forVotes;
         uint abstainVotes;
         mapping(address => bool) hasVoted;
     }
 
-    // данные голосовалки
-    struct Proposal{
+    /**
+     * @notice Stores data about a proposal.
+     * @dev Tracks the start and end times of voting and whether the proposal has been executed.
+     */
+    struct Proposal {
         uint votingStarts;
         uint votingEnds;
         bool executed;
     }
 
+    /**
+     * @notice Represents the different states a proposal can be in.
+     */
     enum ProposalState {Pending, Active, Succeeded, Defeated, Executed, Expired}
 
-    // айди указывает на нужную структура данного голосования
+    /**
+     * @notice Maps a proposal ID to its corresponding Proposal struct.
+     */
     mapping(bytes32 => Proposal) public proposals;
-    mapping(bytes32 => ProposalVote) public proposalVotes;
 
-    // 14 ДНЕЙ
+    /**
+     * @notice Maps a proposal ID to its corresponding ProposalVote struct.
+     */
+    mapping(bytes32 => ProposalVote) public proposalVotes;
+    
+    /**
+     * @notice The duration of the voting period, set to 14 days.
+     */
     uint public constant VOTING_DURATION = 14 * 24 * 60 * 60; 
+
+    /**
+     * @notice The time limit for executing a proposal after it has succeeded, set to 7 days.
+     */
     uint public constant TIME_TO_EXECUTE = 7 * 24 * 60 * 60;
 
-    // устанавливает владельца
+    /**
+     * @notice Sets the initial owner of the contract.
+     * @param _addr The address to be set as the owner.
+     */
     constructor(address _addr){
         owner = _addr;
     }
 
-    // тут мы генерим предложение
+    /**
+     * @notice Generates a new proposal for voting.
+     * @dev Ensures that the proposal does not call the `unpause()` function and that it does not already exist.
+     * @param _to The address to which the proposal's action will be directed.
+     * @param _value The value of ETH or tokens to be transferred as part of the proposal.
+     * @param _func The function signature of the proposal's action.
+     * @param _data The data to be sent along with the function call.
+     * @param _description A brief description of the proposal.
+     */
     function propose(
         address _to,
         uint _value,
@@ -44,7 +79,7 @@ contract DAO is Market{
         bytes calldata _data,
         string calldata _description
     ) external {
-        require(govr.balanceOf(msg.sender) > 0, "not enough tokens");
+        if (keccak256(abi.encodePacked(_func)) == keccak256(abi.encodePacked("unpause()"))) revert("Can not be called there");
 
         bytes32 proposalId = generateProposalId(
             _to, _value, _func, _data, keccak256(bytes(_description))
@@ -59,7 +94,16 @@ contract DAO is Market{
         });
     }
     
-    // выполняем действие за которое проголосовали
+    /**
+     * @notice Executes a proposal that has passed the voting process.
+     * @dev The proposal must be in the 'Succeeded' state, and the execution time must not have expired.
+     * @param _to The address to which the proposal's action will be directed.
+     * @param _value The value of ETH or tokens to be transferred as part of the proposal.
+     * @param _func The function signature of the proposal's action.
+     * @param _data The data to be sent along with the function call.
+     * @param _descriptionHash The hash of the proposal's description.
+     * @return bytes The response from the executed call.
+     */
     function execute(
         address _to,
         uint _value,
@@ -94,7 +138,23 @@ contract DAO is Market{
         return resp;
     }
 
-    // голосуем тут за предложение
+    /**
+     * @notice Calls the unpause function on a specified contract.
+     * @dev The caller must hold governance tokens (govr).
+     * @param _to The address of the contract to unpause.
+     */
+    function unpause(address _to) public {
+        require(govr.balanceOf(msg.sender) > 0, "You are not part of the governament");
+        (bool success, ) = _to.call(abi.encodeWithSignature("unpause()"));
+        require(success);
+    }
+
+    /**
+     * @notice Casts a vote on a proposal.
+     * @dev The voting power is capped at 5000. The caller must have a sufficient token balance and must not have voted before.
+     * @param proposalId The ID of the proposal to vote on.
+     * @param voteType The type of vote (0 = Against, 1 = For, 2 = Abstain).
+     */
     function vote(bytes32 proposalId, uint8 voteType) external {
         uint votingPower = govr.balanceOf(msg.sender);
         require(state(proposalId) == ProposalState.Active, "invalid state");
@@ -105,9 +165,9 @@ contract DAO is Market{
 
         require(!proposalVote.hasVoted[msg.sender], "already voted!");
 
-        if (voteType == 0){
+        if (voteType == 0) {
             proposalVote.againstVotes += votingPower;
-        } else if (voteType == 1){
+        } else if (voteType == 1) {
             proposalVote.forVotes += votingPower;
         } else {
             proposalVote.abstainVotes += votingPower;
@@ -116,8 +176,11 @@ contract DAO is Market{
         proposalVote.hasVoted[msg.sender] = true;
     }
 
-
-    // возвращает состояние
+    /**
+     * @notice Returns the current state of a proposal.
+     * @param proposalId The ID of the proposal to check.
+     * @return ProposalState The current state of the proposal.
+     */
     function state(bytes32 proposalId) public view returns (ProposalState) {
         Proposal storage proposal = proposals[proposalId];
         ProposalVote storage proposalVote = proposalVotes[proposalId];
@@ -132,19 +195,27 @@ contract DAO is Market{
             return ProposalState.Pending;
         }
 
-        if(block.timestamp >= proposal.votingStarts &&
+        if (block.timestamp >= proposal.votingStarts &&
             proposal.votingEnds > block.timestamp) {
             return ProposalState.Active;
         }
 
-        if(proposalVote.forVotes > proposalVote.againstVotes) {
+        if (proposalVote.forVotes > proposalVote.againstVotes) {
             return ProposalState.Succeeded;
         } else {
             return ProposalState.Defeated;
         }
     }
 
-    // генерит айди голосования
+    /**
+     * @notice Generates a unique ID for a proposal.
+     * @param _to The address to which the proposal's action will be directed.
+     * @param _value The value of ETH or tokens to be transferred as part of the proposal.
+     * @param _func The function signature of the proposal's action.
+     * @param _data The data to be sent along with the function call.
+     * @param _descriptionHach The hash of the proposal's description.
+     * @return bytes32 The generated proposal ID.
+     */
     function generateProposalId(
         address _to,
         uint _value,
